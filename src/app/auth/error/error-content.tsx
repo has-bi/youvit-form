@@ -10,6 +10,15 @@ const errorMessages = {
   Configuration: "There is a problem with the server configuration.",
   AccessDenied: "You do not have permission to sign in.",
   Verification: "The verification token has expired or is invalid.",
+  OAuthSignin: "Error in constructing an authorization URL.",
+  OAuthCallback: "Error in handling the response from an OAuth provider.",
+  OAuthCreateAccount: "Could not create OAuth account.",
+  EmailCreateAccount: "Could not create email account.",
+  Callback: "Error in the OAuth callback handler route.",
+  OAuthAccountNotLinked: "The email on the account is already linked, but not with this OAuth account.",
+  EmailSignin: "Sending the e-mail with the verification token failed.",
+  CredentialsSignin: "The authorize callback returned null in the Credentials provider.",
+  SessionRequired: "The content of this page requires you to be signed in at all times.",
   Default: "An error occurred during authentication.",
 };
 
@@ -40,6 +49,14 @@ export default function AuthErrorContent() {
               {error === "AccessDenied" && (
                 <div className="text-sm text-muted-foreground">
                   <p>Please use your Youvit company email to sign in.</p>
+                </div>
+              )}
+              
+              {/* Debug Info */}
+              {process.env.NODE_ENV === "development" && (
+                <div className="text-xs text-gray-500 bg-gray-100 p-2 rounded">
+                  <p><strong>Error Code:</strong> {error || "Unknown"}</p>
+                  <p><strong>URL:</strong> {window.location.href}</p>
                 </div>
               )}
               
