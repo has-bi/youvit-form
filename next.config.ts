@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ['@prisma/client', 'prisma', 'googleapis', '@google-cloud/storage'],
+  output: {
+    fileTracingRoot: __dirname,
+  },
   images: {
     remotePatterns: [
       {

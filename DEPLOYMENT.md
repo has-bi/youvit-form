@@ -61,7 +61,7 @@ git push origin main
 2. Import your repository
 3. Configure build settings:
    - Framework Preset: Next.js
-   - Build Command: `npm run build`
+   - Build Command: Leave empty (uses vercel.json configuration)
    - Output Directory: `.next` (default)
 
 ### Environment Variables

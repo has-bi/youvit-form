@@ -5,7 +5,17 @@ import { v4 as uuidv4 } from 'uuid'
 // Initialize Google Cloud Storage
 const storage = new Storage({
   projectId: process.env.GCS_PROJECT_ID,
-  keyFilename: process.env.GCS_KEY_FILE,
+  credentials: {
+    type: 'service_account',
+    project_id: process.env.GCS_PROJECT_ID,
+    private_key_id: '',
+    private_key: process.env.GCS_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    client_email: process.env.GCS_CLIENT_EMAIL,
+    client_id: '',
+    auth_uri: 'https://accounts.google.com/o/oauth2/auth',
+    token_uri: 'https://oauth2.googleapis.com/token',
+    auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs'
+  },
 })
 
 const bucket = storage.bucket(process.env.GCS_BUCKET_NAME!)
