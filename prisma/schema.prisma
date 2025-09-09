@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String       @id @default(cuid())
+  name          String?
+  email         String       @unique
+  emailVerified DateTime?    @map("email_verified")
+  image         String?
+  role          Role         @default(USER)
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+  accounts      Account[]
+  forms         Form[]       @relation("FormCreatedBy")
+  sessions      Session[]
+  submissions   Submission[]
+
+  @@map("users")
+}
+
+model Form {
+  id          String       @id @default(cuid())
+  title       String
+  description String?
+  schema      Json
+  isActive    Boolean      @default(true) @map("is_active")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+  createdById String?      @map("created_by")
+  createdBy   User?        @relation("FormCreatedBy", fields: [createdById], references: [id])
+  submissions Submission[]
+
+  @@map("forms")
+}
+
+model Submission {
+  id          String   @id @default(cuid())
+  data        Json
+  files       Json     @default("[]")
+  sheetsRowId Int?     @map("sheets_row_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  formId      String   @map("form_id")
+  userId      String?  @map("user_id")
+  form        Form     @relation(fields: [formId], references: [id], onDelete: Cascade)
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("submissions")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
