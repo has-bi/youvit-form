@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Upload, X, CheckCircle, AlertCircle, Camera } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
@@ -245,19 +246,116 @@ export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-        <Card className="w-full max-w-sm shadow-sm border border-gray-200">
-          <CardContent className="flex flex-col items-center justify-center p-8">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mb-4"></div>
-            <p className="text-gray-600 text-sm">Loading...</p>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <Card className="shadow-sm border border-gray-200 bg-white">
+            <CardHeader className="text-center pb-6">
+              <div className="flex justify-center mb-4">
+                <Skeleton className="h-16 w-16 rounded-full" />
+              </div>
+              <Skeleton className="h-8 w-64 mx-auto mb-2" />
+              <Skeleton className="h-4 w-48 mx-auto" />
+            </CardHeader>
+            
+            <CardContent className="p-8">
+              <div className="space-y-8">
+                {/* Basic Information Section */}
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <Skeleton className="h-4 w-16" />
+                      <Skeleton className="h-12 w-full rounded-lg" />
+                    </div>
+                    <div className="space-y-3">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-12 w-full rounded-lg" />
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-12 w-full rounded-lg" />
+                  </div>
+                </div>
+
+                {/* Image Upload Section */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-3">
+                    <Skeleton className="h-4 w-20" />
+                    <Skeleton className="h-32 w-full rounded-lg" />
+                  </div>
+                  <div className="space-y-3">
+                    <Skeleton className="h-4 w-18" />
+                    <Skeleton className="h-32 w-full rounded-lg" />
+                  </div>
+                </div>
+
+                {/* Out of Stock Section */}
+                <div className="space-y-4">
+                  <Skeleton className="h-4 w-48" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {[...Array(6)].map((_, i) => (
+                      <div key={i} className="flex items-center space-x-3">
+                        <Skeleton className="h-4 w-4 rounded" />
+                        <Skeleton className="h-4 w-32" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Notes Section */}
+                <div className="space-y-3">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-24 w-full rounded-lg" />
+                </div>
+
+                {/* Submit Button */}
+                <div className="flex justify-center">
+                  <Skeleton className="h-12 w-40 rounded-lg" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-50 relative">
+      {/* Submission Loading Overlay */}
+      {submitting && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 text-center max-w-sm mx-4">
+            <div className="flex justify-center mb-6">
+              <div className="relative">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600"></div>
+                <CheckCircle className="absolute inset-0 m-auto h-6 w-6 text-blue-600" />
+              </div>
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Submitting your audit...
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Please wait while we save your data
+            </p>
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>Uploading images</span>
+                <span>✓</span>
+              </div>
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>Saving to spreadsheet</span>
+                <div className="animate-spin h-3 w-3 border-2 border-gray-300 border-t-blue-600 rounded-full"></div>
+              </div>
+              <div className="flex justify-between text-xs text-gray-300">
+                <span>Generating report</span>
+                <span>○</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Subtle background elements */}
       <div className="absolute left-8 bottom-8 opacity-8 hidden xl:block">
         <Image
