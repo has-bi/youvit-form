@@ -14,6 +14,11 @@ export default async function AdminLayout({
     redirect("/login");
   }
 
+  // Only allow hasbi@youvit.co.id to access admin dashboard
+  if (session.user.email !== "hasbi@youvit.co.id") {
+    redirect("/unauthorized");
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navigation />
