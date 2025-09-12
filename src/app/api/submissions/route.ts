@@ -68,82 +68,76 @@ async function addToGoogleSheets(submissionData: any, formTitle: string) {
       formTitle                                    // I: Form Title
     ]
 
-    // Try to append to "Submissions" sheet, create if doesn't exist
+    // Try to append to "Submissions" sheet directly
     let sheetName = 'Submissions'
-    
-    let sheetExists = false
-    let hasHeaders = false
+    let result
     
     try {
-      // Check if sheet exists and has proper headers
-      const existingData = await sheets.spreadsheets.values.get({
+      // Try to append directly - this is much faster
+      result = await sheets.spreadsheets.values.append({
         spreadsheetId,
-        range: `${sheetName}!A1:I1`,
-      })
-      
-      sheetExists = true
-      
-      // Check if the first row contains headers
-      const firstRow = existingData.data.values?.[0]
-      hasHeaders = firstRow && firstRow[0] === 'Timestamp' && firstRow[1] === 'Audit Date'
-      
-    } catch (error) {
-      // Sheet doesn't exist
-      sheetExists = false
-    }
-    
-    if (!sheetExists) {
-      // Create sheet with headers
-      await sheets.spreadsheets.batchUpdate({
-        spreadsheetId,
-        requestBody: {
-          requests: [{
-            addSheet: {
-              properties: {
-                title: sheetName,
-              }
-            }
-          }]
-        }
-      })
-      hasHeaders = false
-    }
-    
-    if (!hasHeaders) {
-      // Add or fix headers
-      await sheets.spreadsheets.values.update({
-        spreadsheetId,
-        range: `${sheetName}!A1:I1`,
+        range: `${sheetName}!A:I`,
         valueInputOption: 'RAW',
+        insertDataOption: 'INSERT_ROWS',
         requestBody: {
-          values: [[
-            'Timestamp',
-            'Audit Date', 
-            'Employee Name',
-            'Store Location',
-            'Before Image',
-            'After Image', 
-            'Out of Stock Items',
-            'Notes',
-            'Form Title'
-          ]]
+          values: [rowData]
         }
       })
+    } catch (error: any) {
+      // If sheet doesn't exist or has issues, create it with headers and retry
+      if (error?.code === 400 || error?.message?.includes('Unable to parse range')) {
+        console.log('Creating new sheet with headers...')
+        
+        // Create sheet with headers in one operation
+        await sheets.spreadsheets.batchUpdate({
+          spreadsheetId,
+          requestBody: {
+            requests: [{
+              addSheet: {
+                properties: {
+                  title: sheetName,
+                }
+              }
+            }]
+          }
+        })
+        
+        // Add headers and data in one batch operation
+        const headerRow = [
+          'Timestamp',
+          'Audit Date', 
+          'Employee Name',
+          'Store Location',
+          'Before Image',
+          'After Image', 
+          'Out of Stock Items',
+          'Notes',
+          'Form Title'
+        ]
+        
+        result = await sheets.spreadsheets.values.batchUpdate({
+          spreadsheetId,
+          requestBody: {
+            valueInputOption: 'RAW',
+            data: [
+              {
+                range: `${sheetName}!A1:I1`,
+                values: [headerRow]
+              },
+              {
+                range: `${sheetName}!A2:I2`,
+                values: [rowData]
+              }
+            ]
+          }
+        })
+      } else {
+        throw error
+      }
     }
 
-    // Append the new submission
-    const result = await sheets.spreadsheets.values.append({
-      spreadsheetId,
-      range: `${sheetName}!A:I`,
-      valueInputOption: 'RAW',
-      insertDataOption: 'INSERT_ROWS',
-      requestBody: {
-        values: [rowData]
-      }
-    })
-
-    console.log('✅ Successfully added to Google Sheets:', result.data.updates?.updatedCells)
-    return result.data.updates?.updatedRange
+    console.log('✅ Successfully added to Google Sheets')
+    return result.data.updatedRange || `${sheetName}!A:I`
 
   } catch (error) {
     console.error('❌ Error adding to Google Sheets:', error)
@@ -153,58 +147,58 @@ async function addToGoogleSheets(submissionData: any, formTitle: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    // No authentication required for form submissions
-    const body = await request.json()
-    const validatedData = submitFormSchema.parse(body)
-
-    // Check if form exists and is active
-    const form = await prisma.form.findUnique({
-      where: {
-        id: validatedData.formId,
-        isActive: true,
-      },
-      select: {
-        id: true,
-        title: true,
-        schema: true,
-      },
+    // Set a timeout for the entire operation
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Request timeout')), 50000) // 50 second timeout
     })
 
-    if (!form) {
+    const processSubmission = async () => {
+      // No authentication required for form submissions
+      const body = await request.json()
+      const validatedData = submitFormSchema.parse(body)
+
+      // For performance, skip database check and write directly to Google Sheets
+      // Use formId as title if needed
+      const formTitle = validatedData.formId || 'Form Submission'
+      
+      console.log('📝 Writing submission directly to Google Sheets...')
+      const sheetsResult = await addToGoogleSheets(validatedData.data, formTitle)
+      
+      if (!sheetsResult) {
+        console.error('❌ Failed to write to Google Sheets')
+        return NextResponse.json(
+          { error: "Failed to save submission" },
+          { status: 500 }
+        )
+      }
+
+      console.log('✅ Successfully written to Google Sheets:', sheetsResult)
+
+      // Generate a simple submission ID for response
+      const submissionId = `sub_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
+
       return NextResponse.json(
-        { error: "Form not found or no longer accepting submissions" },
-        { status: 404 }
+        {
+          id: submissionId,
+          message: "Form submitted successfully",
+          submittedAt: new Date().toISOString(),
+          sheetsRange: sheetsResult,
+        },
+        { status: 201 }
       )
     }
 
-    // Write directly to Google Sheets (primary storage)
-    console.log('📝 Writing submission directly to Google Sheets...')
-    const sheetsResult = await addToGoogleSheets(validatedData.data, form.title)
-    
-    if (!sheetsResult) {
-      console.error('❌ Failed to write to Google Sheets')
-      return NextResponse.json(
-        { error: "Failed to save submission" },
-        { status: 500 }
-      )
-    }
-
-    console.log('✅ Successfully written to Google Sheets:', sheetsResult)
-
-    // Generate a simple submission ID for response
-    const submissionId = `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-
-    return NextResponse.json(
-      {
-        id: submissionId,
-        message: "Form submitted successfully",
-        submittedAt: new Date().toISOString(),
-        sheetsRange: sheetsResult,
-      },
-      { status: 201 }
-    )
+    // Race between submission and timeout
+    return await Promise.race([processSubmission(), timeoutPromise])
   } catch (error) {
     console.error("Form submission error:", error)
+    
+    if (error instanceof Error && error.message === "Request timeout") {
+      return NextResponse.json(
+        { error: "Request timeout. Please try again." },
+        { status: 408 }
+      )
+    }
     
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
