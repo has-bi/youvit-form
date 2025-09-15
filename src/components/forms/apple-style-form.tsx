@@ -29,15 +29,11 @@ const storeAuditSchema = z.object({
   store_location: z.string().min(1, "Store location is required"),
   before_image: z
     .string()
-    .url("Before image is required")
-    .optional()
-    .or(z.literal("")),
+    .optional(),
   after_image: z
     .string()
-    .url("After image is required")
-    .optional()
-    .or(z.literal("")),
-  out_of_stock: z.array(z.string()).default([]),
+    .optional(),
+  out_of_stock: z.array(z.string()).optional().default([]),
   notes: z.string().optional(),
 });
 
@@ -81,10 +77,15 @@ export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingImages, setUploadingImages] = useState(false);
+  const [imagesUploaded, setImagesUploaded] = useState(false);
+  const [savingToSheets, setSavingToSheets] = useState(false);
   const [beforeImageUploading, setBeforeImageUploading] = useState(false);
   const [afterImageUploading, setAfterImageUploading] = useState(false);
   const [employeeSearch, setEmployeeSearch] = useState("");
   const [storeSearch, setStoreSearch] = useState("");
+  const [beforeImageFile, setBeforeImageFile] = useState<File | null>(null);
+  const [afterImageFile, setAfterImageFile] = useState<File | null>(null);
 
   const form = useForm<StoreAuditFormData>({
     resolver: zodResolver(storeAuditSchema),
@@ -156,8 +157,8 @@ export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
     return result.url;
   };
 
-  // Handle image uploads
-  const handleImageUpload = async (
+  // Handle image selection (not upload yet)
+  const handleImageSelect = (
     event: React.ChangeEvent<HTMLInputElement>,
     fieldName: "before_image" | "after_image"
   ) => {
@@ -170,28 +171,38 @@ export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
       return;
     }
 
-    // Validate file size (5MB max)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Image size must be less than 5MB");
-      return;
+    // Store file locally, don't upload yet
+    if (fieldName === "before_image") {
+      setBeforeImageFile(file);
+      form.setValue(fieldName, "selected"); // Set a placeholder value
+    } else {
+      setAfterImageFile(file);
+      form.setValue(fieldName, "selected"); // Set a placeholder value
+    }
+    
+    toast.success("Image selected successfully!");
+  };
+
+  // Upload image during form submission
+  const uploadImageDuringSubmission = async (
+    file: File,
+    fieldName: string
+  ): Promise<string> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("fieldId", fieldName);
+
+    const response = await fetch("/api/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error("Upload failed");
     }
 
-    const setUploading =
-      fieldName === "before_image"
-        ? setBeforeImageUploading
-        : setAfterImageUploading;
-
-    try {
-      setUploading(true);
-      const imageUrl = await uploadImage(file, fieldName);
-      form.setValue(fieldName, imageUrl);
-      toast.success("Image uploaded successfully");
-    } catch (error) {
-      console.error("Image upload error:", error);
-      toast.error("Failed to upload image");
-    } finally {
-      setUploading(false);
-    }
+    const result = await response.json();
+    return result.url;
   };
 
   // Handle out of stock items
@@ -211,6 +222,41 @@ export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
   const onSubmit = async (data: StoreAuditFormData) => {
     try {
       setSubmitting(true);
+      setUploadingImages(false);
+      setImagesUploaded(false);
+      setSavingToSheets(false);
+
+      // Upload images first if selected
+      let beforeImageUrl = "";
+      let afterImageUrl = "";
+
+      if (beforeImageFile || afterImageFile) {
+        setUploadingImages(true);
+        
+        if (beforeImageFile) {
+          beforeImageUrl = await uploadImageDuringSubmission(beforeImageFile, "before_image");
+        }
+
+        if (afterImageFile) {
+          afterImageUrl = await uploadImageDuringSubmission(afterImageFile, "after_image");
+        }
+        
+        setUploadingImages(false);
+        setImagesUploaded(true);
+        
+        // Small delay to show the upload success feedback
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      // Now save to sheets
+      setSavingToSheets(true);
+
+      // Update data with actual image URLs
+      const submissionData = {
+        ...data,
+        before_image: beforeImageUrl,
+        after_image: afterImageUrl,
+      };
 
       const response = await fetch("/api/submissions", {
         method: "POST",
@@ -219,7 +265,7 @@ export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
         },
         body: JSON.stringify({
           formId: "merchandising-day-vol-2",
-          data: data,
+          data: submissionData,
         }),
       });
 
@@ -234,13 +280,18 @@ export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
         onSuccess(result);
       }
 
-      // Reset form
+      // Reset form and images
       form.reset();
+      setBeforeImageFile(null);
+      setAfterImageFile(null);
     } catch (error) {
       console.error("Submission error:", error);
       toast.error("Failed to submit form");
     } finally {
       setSubmitting(false);
+      setUploadingImages(false);
+      setImagesUploaded(false);
+      setSavingToSheets(false);
     }
   };
 
@@ -333,22 +384,38 @@ export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
               </div>
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Submitting your audit...
+              {uploadingImages ? "Uploading images..." : 
+               savingToSheets ? "Saving your audit..." : 
+               "Submitting your audit..."}
             </h3>
             <p className="text-sm text-gray-600 mb-4">
-              Please wait while we save your data
+              {uploadingImages ? "Processing your images" :
+               savingToSheets ? "Saving to spreadsheet" :
+               "Please wait while we save your data"}
             </p>
             <div className="space-y-2">
               <div className="flex justify-between text-xs text-gray-500">
                 <span>Uploading images</span>
-                <span>✓</span>
+                {uploadingImages ? (
+                  <div className="animate-spin h-3 w-3 border-2 border-gray-300 border-t-blue-600 rounded-full"></div>
+                ) : imagesUploaded || (!beforeImageFile && !afterImageFile) ? (
+                  <span className="text-green-600">✓</span>
+                ) : (
+                  <span className="text-gray-300">○</span>
+                )}
               </div>
               <div className="flex justify-between text-xs text-gray-500">
                 <span>Saving to spreadsheet</span>
-                <div className="animate-spin h-3 w-3 border-2 border-gray-300 border-t-blue-600 rounded-full"></div>
+                {savingToSheets ? (
+                  <div className="animate-spin h-3 w-3 border-2 border-gray-300 border-t-blue-600 rounded-full"></div>
+                ) : imagesUploaded || (!beforeImageFile && !afterImageFile) ? (
+                  <span className="text-gray-300">○</span>
+                ) : (
+                  <span className="text-gray-300">○</span>
+                )}
               </div>
               <div className="flex justify-between text-xs text-gray-300">
-                <span>Generating report</span>
+                <span>Completing submission</span>
                 <span>○</span>
               </div>
             </div>
@@ -520,19 +587,29 @@ export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
                       Before Image
                     </Label>
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 hover:bg-blue-50/30 transition-all duration-200">
-                      {form.watch("before_image") ? (
+                      {beforeImageFile || form.watch("before_image") ? (
                         <div className="space-y-4">
                           <div className="flex items-center justify-center space-x-2 text-green-600">
                             <CheckCircle className="w-8 h-8" />
-                            <span className="font-medium">
-                              Before image uploaded
-                            </span>
+                            <div className="text-center">
+                              <span className="font-medium block">
+                                Before image selected
+                              </span>
+                              {beforeImageFile && (
+                                <span className="text-sm text-gray-500 mt-1 block">
+                                  {beforeImageFile.name}
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() => form.setValue("before_image", "")}
+                            onClick={() => {
+                              setBeforeImageFile(null);
+                              form.setValue("before_image", "");
+                            }}
                             className="border-gray-300 text-gray-700 hover:bg-gray-50"
                           >
                             <X className="w-4 h-4 mr-2" />
@@ -545,17 +622,17 @@ export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
                             type="file"
                             accept="image/*"
                             onChange={(e) =>
-                              handleImageUpload(e, "before_image")
+                              handleImageSelect(e, "before_image")
                             }
                             className="hidden"
                             id="before_image_input"
-                            disabled={beforeImageUploading}
+                            disabled={submitting}
                           />
                           <label
                             htmlFor="before_image_input"
                             className="cursor-pointer flex flex-col items-center"
                           >
-                            {beforeImageUploading ? (
+                            {submitting ? (
                               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-3"></div>
                             ) : (
                               <Camera className="w-10 h-10 text-gray-400 mb-3" />
@@ -579,19 +656,29 @@ export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
                       After Image
                     </Label>
                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-green-400 hover:bg-green-50/30 transition-all duration-200">
-                      {form.watch("after_image") ? (
+                      {afterImageFile || form.watch("after_image") ? (
                         <div className="space-y-4">
                           <div className="flex items-center justify-center space-x-2 text-green-600">
                             <CheckCircle className="w-8 h-8" />
-                            <span className="font-medium">
-                              After image uploaded
-                            </span>
+                            <div className="text-center">
+                              <span className="font-medium block">
+                                After image selected
+                              </span>
+                              {afterImageFile && (
+                                <span className="text-sm text-gray-500 mt-1 block">
+                                  {afterImageFile.name}
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <Button
                             type="button"
                             variant="outline"
                             size="sm"
-                            onClick={() => form.setValue("after_image", "")}
+                            onClick={() => {
+                              setAfterImageFile(null);
+                              form.setValue("after_image", "");
+                            }}
                             className="border-gray-300 text-gray-700 hover:bg-gray-50"
                           >
                             <X className="w-4 h-4 mr-2" />
@@ -604,17 +691,17 @@ export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
                             type="file"
                             accept="image/*"
                             onChange={(e) =>
-                              handleImageUpload(e, "after_image")
+                              handleImageSelect(e, "after_image")
                             }
                             className="hidden"
                             id="after_image_input"
-                            disabled={afterImageUploading}
+                            disabled={submitting}
                           />
                           <label
                             htmlFor="after_image_input"
                             className="cursor-pointer flex flex-col items-center"
                           >
-                            {afterImageUploading ? (
+                            {submitting ? (
                               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mb-3"></div>
                             ) : (
                               <Camera className="w-10 h-10 text-gray-400 mb-3" />
@@ -689,9 +776,7 @@ export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
                 <Button
                   type="submit"
                   className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 shadow-sm"
-                  disabled={
-                    submitting || beforeImageUploading || afterImageUploading
-                  }
+                  disabled={submitting}
                 >
                   {submitting ? (
                     <>
