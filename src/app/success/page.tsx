@@ -25,7 +25,7 @@ export default function SuccessPage() {
             Submission Successful
           </CardTitle>
           <p className="text-gray-500 font-light">
-            Thank you for completing your audit
+            Thank you for completing the form!
           </p>
         </CardHeader>
 

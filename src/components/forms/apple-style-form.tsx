@@ -27,12 +27,8 @@ const storeAuditSchema = z.object({
   audit_date: z.string().min(1, "Date is required"),
   employee_name: z.string().min(1, "Employee name is required"),
   store_location: z.string().min(1, "Store location is required"),
-  before_image: z
-    .string()
-    .optional(),
-  after_image: z
-    .string()
-    .optional(),
+  before_image: z.string().optional(),
+  after_image: z.string().optional(),
   out_of_stock: z.array(z.string()).optional().default([]),
   notes: z.string().optional(),
 });
@@ -179,7 +175,7 @@ export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
       setAfterImageFile(file);
       form.setValue(fieldName, "selected"); // Set a placeholder value
     }
-    
+
     toast.success("Image selected successfully!");
   };
 
@@ -232,20 +228,26 @@ export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
 
       if (beforeImageFile || afterImageFile) {
         setUploadingImages(true);
-        
+
         if (beforeImageFile) {
-          beforeImageUrl = await uploadImageDuringSubmission(beforeImageFile, "before_image");
+          beforeImageUrl = await uploadImageDuringSubmission(
+            beforeImageFile,
+            "before_image"
+          );
         }
 
         if (afterImageFile) {
-          afterImageUrl = await uploadImageDuringSubmission(afterImageFile, "after_image");
+          afterImageUrl = await uploadImageDuringSubmission(
+            afterImageFile,
+            "after_image"
+          );
         }
-        
+
         setUploadingImages(false);
         setImagesUploaded(true);
-        
+
         // Small delay to show the upload success feedback
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
 
       // Now save to sheets
@@ -307,7 +309,7 @@ export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
               <Skeleton className="h-8 w-64 mx-auto mb-2" />
               <Skeleton className="h-4 w-48 mx-auto" />
             </CardHeader>
-            
+
             <CardContent className="p-8">
               <div className="space-y-8">
                 {/* Basic Information Section */}
@@ -384,14 +386,18 @@ export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
               </div>
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              {uploadingImages ? "Uploading images..." : 
-               savingToSheets ? "Saving your audit..." : 
-               "Submitting your audit..."}
+              {uploadingImages
+                ? "Uploading images..."
+                : savingToSheets
+                ? "Saving your response..."
+                : "Submitting your response..."}
             </h3>
             <p className="text-sm text-gray-600 mb-4">
-              {uploadingImages ? "Processing your images" :
-               savingToSheets ? "Saving to spreadsheet" :
-               "Please wait while we save your data"}
+              {uploadingImages
+                ? "Processing your images"
+                : savingToSheets
+                ? "Saving to spreadsheet"
+                : "Please wait while we save your data"}
             </p>
             <div className="space-y-2">
               <div className="flex justify-between text-xs text-gray-500">
@@ -449,9 +455,7 @@ export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
             <CardTitle className="text-3xl font-light text-gray-900 mb-3">
               Merchandising Day Vol 2
             </CardTitle>
-            <p className="text-gray-500 font-light">
-              Complete your store audit
-            </p>
+            <p className="text-gray-500 font-light">Complete your response</p>
           </CardHeader>
 
           <CardContent className="px-8 pb-8 space-y-8">
