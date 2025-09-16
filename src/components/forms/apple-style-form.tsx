@@ -55,18 +55,7 @@ interface AppleStyleFormProps {
 }
 
 // Common out-of-stock items
-const OUT_OF_STOCK_ITEMS = [
-  "Product A - Vitamin C 1000mg",
-  "Product B - Multivitamin",
-  "Product C - Omega 3",
-  "Product D - Probiotics",
-  "Product E - Calcium + D3",
-  "Product F - Iron Supplement",
-  "Product G - Magnesium",
-  "Product H - Zinc",
-  "Product I - B-Complex",
-  "Product J - Vitamin D3",
-];
+const OUT_OF_STOCK_ITEMS = ["PAM7", "PAA7", "PAS7", "PKM7", "PKO7", "PKA7"];
 
 export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
   const [employees, setEmployees] = useState<Employee[]>([]);
