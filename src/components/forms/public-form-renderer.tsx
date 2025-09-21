@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { FormField } from "@/lib/validations"
+import { getReadableErrorMessage } from "@/lib/utils"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -32,6 +33,7 @@ export function PublicFormRenderer({ form }: PublicFormRendererProps) {
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, any>>({})
   const [sheetsData, setSheetsData] = useState<{employees: any[], stores: any[]}>({employees: [], stores: []})
   const [isLoadingSheetsData, setIsLoadingSheetsData] = useState(true)
+  const [submissionError, setSubmissionError] = useState<string | null>(null)
   
   const formSchema = form.schema as { fields: FormField[], headerImage?: string }
   const fields = formSchema?.fields || []
@@ -140,6 +142,8 @@ export function PublicFormRenderer({ form }: PublicFormRendererProps) {
 
   const onSubmit = async (data: any) => {
     setIsSubmitting(true)
+    setSubmissionError(null)
+    formMethods.clearErrors()
     
     try {
       // Add uploaded files to form data
@@ -161,13 +165,39 @@ export function PublicFormRenderer({ form }: PublicFormRendererProps) {
       })
 
       if (!response.ok) {
-        throw new Error("Failed to submit form")
+        const errorMessage = await getReadableErrorMessage(
+          response,
+          "We couldn't submit the form. Please check your answers and try again."
+        )
+        throw new Error(errorMessage)
       }
 
       setIsSubmitted(true)
+      setSubmissionError(null)
       toast.success("Form submitted successfully!")
     } catch (error) {
-      toast.error("Failed to submit form. Please try again.")
+      const message =
+        error instanceof Error
+          ? error.message
+          : "We couldn't submit the form. Please try again."
+
+      const lowerMessage = message.toLowerCase()
+      if (lowerMessage.includes("employee")) {
+        formMethods.setError("employee_name" as any, {
+          type: "manual",
+          message,
+        })
+      }
+
+      if (lowerMessage.includes("store")) {
+        formMethods.setError("store_location" as any, {
+          type: "manual",
+          message,
+        })
+      }
+
+      setSubmissionError(message)
+      toast.error(message)
       console.error("Form submission error:", error)
     } finally {
       setIsSubmitting(false)
@@ -479,6 +509,11 @@ export function PublicFormRenderer({ form }: PublicFormRendererProps) {
             )}
           </CardHeader>
           <CardContent className="px-6 pb-8">
+            {submissionError && (
+              <div className="mb-5 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                {submissionError}
+              </div>
+            )}
             <form onSubmit={formMethods.handleSubmit(onSubmit)} className="space-y-5">
           {fields.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">

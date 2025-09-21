@@ -21,6 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Upload, X, CheckCircle, AlertCircle, Camera } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
+import { getReadableErrorMessage } from "@/lib/utils";
 
 // Form schema
 const storeAuditSchema = z.object({
@@ -30,7 +31,7 @@ const storeAuditSchema = z.object({
   before_image: z.string().optional(),
   after_image: z.string().optional(),
   out_of_stock: z.array(z.string()).optional().default([]),
-  notes: z.string().optional(),
+  notes: z.string().max(200, "Notes must be 200 characters or fewer").optional(),
 });
 
 type StoreAuditFormData = z.infer<typeof storeAuditSchema>;
@@ -71,6 +72,7 @@ export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
   const [storeSearch, setStoreSearch] = useState("");
   const [beforeImageFile, setBeforeImageFile] = useState<File | null>(null);
   const [afterImageFile, setAfterImageFile] = useState<File | null>(null);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   const form = useForm<StoreAuditFormData>({
     resolver: zodResolver(storeAuditSchema),
@@ -84,6 +86,8 @@ export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
       notes: "",
     },
   });
+
+  const notesValue = form.watch("notes") || "";
 
   // Filter employees and stores based on search
   const filteredEmployees = employees.filter((employee) =>
@@ -205,12 +209,14 @@ export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
 
   // Form submission
   const onSubmit = async (data: StoreAuditFormData) => {
-    try {
-      setSubmitting(true);
-      setUploadingImages(false);
-      setImagesUploaded(false);
-      setSavingToSheets(false);
+    setSubmitting(true);
+    setSubmissionError(null);
+    form.clearErrors(["employee_name", "store_location"]);
+    setUploadingImages(false);
+    setImagesUploaded(false);
+    setSavingToSheets(false);
 
+    try {
       // Upload images first if selected
       let beforeImageUrl = "";
       let afterImageUrl = "";
@@ -261,11 +267,16 @@ export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
       });
 
       if (!response.ok) {
-        throw new Error("Submission failed");
+        const errorMessage = await getReadableErrorMessage(
+          response,
+          "We couldn't submit the form. Please review the highlighted fields."
+        );
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
       toast.success("Form submitted successfully");
+      setSubmissionError(null);
 
       if (onSuccess) {
         onSuccess(result);
@@ -277,7 +288,22 @@ export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
       setAfterImageFile(null);
     } catch (error) {
       console.error("Submission error:", error);
-      toast.error("Failed to submit form");
+      const message =
+        error instanceof Error
+          ? error.message
+          : "We couldn't submit the form. Please review the highlighted fields.";
+
+      const lowerMessage = message.toLowerCase();
+      if (lowerMessage.includes("employee")) {
+        form.setError("employee_name", { type: "manual", message });
+      }
+
+      if (lowerMessage.includes("store")) {
+        form.setError("store_location", { type: "manual", message });
+      }
+
+      setSubmissionError(message);
+      toast.error(message);
     } finally {
       setSubmitting(false);
       setUploadingImages(false);
@@ -448,6 +474,11 @@ export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
           </CardHeader>
 
           <CardContent className="px-8 pb-8 space-y-8">
+            {submissionError && (
+              <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                {submissionError}
+              </div>
+            )}
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
               {/* Basic Information */}
               <div className="space-y-6">
@@ -760,8 +791,12 @@ export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
                   {...form.register("notes")}
                   placeholder="Share any additional observations or feedback..."
                   rows={4}
+                  maxLength={200}
                   className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg resize-none"
                 />
+                <p className="text-xs text-gray-500 text-right">
+                  {notesValue.length}/200 characters
+                </p>
               </div>
 
               {/* Submit Button */}

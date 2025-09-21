@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Upload, X, CheckCircle, AlertCircle, Camera } from "lucide-react"
 import { toast } from "sonner"
 import Image from "next/image"
+import { getReadableErrorMessage } from "@/lib/utils"
 
 // Form schema
 const storeAuditSchema = z.object({
@@ -23,7 +24,7 @@ const storeAuditSchema = z.object({
   before_image: z.string().url("Before image is required").optional().or(z.literal("")),
   after_image: z.string().url("After image is required").optional().or(z.literal("")),
   out_of_stock: z.array(z.string()).default([]),
-  notes: z.string().optional(),
+  notes: z.string().max(200, "Notes must be 200 characters or fewer").optional(),
 })
 
 type StoreAuditFormData = z.infer<typeof storeAuditSchema>
@@ -68,6 +69,7 @@ export function SimpleMerchandisingForm({ onSuccess }: SimpleMerchandisingFormPr
   const [submitting, setSubmitting] = useState(false)
   const [beforeImageUploading, setBeforeImageUploading] = useState(false)
   const [afterImageUploading, setAfterImageUploading] = useState(false)
+  const [submissionError, setSubmissionError] = useState<string | null>(null)
 
   const form = useForm<StoreAuditFormData>({
     resolver: zodResolver(storeAuditSchema),
@@ -81,6 +83,8 @@ export function SimpleMerchandisingForm({ onSuccess }: SimpleMerchandisingFormPr
       notes: "",
     },
   })
+
+  const notesValue = form.watch('notes') || ''
 
   // Fetch employees and stores data
   useEffect(() => {
@@ -172,9 +176,11 @@ export function SimpleMerchandisingForm({ onSuccess }: SimpleMerchandisingFormPr
 
   // Form submission
   const onSubmit = async (data: StoreAuditFormData) => {
-    try {
-      setSubmitting(true)
+    setSubmitting(true)
+    setSubmissionError(null)
+    form.clearErrors(["employee_name", "store_location"])
 
+    try {
       const response = await fetch('/api/submissions', {
         method: 'POST',
         headers: {
@@ -187,11 +193,16 @@ export function SimpleMerchandisingForm({ onSuccess }: SimpleMerchandisingFormPr
       })
 
       if (!response.ok) {
-        throw new Error('Submission failed')
+        const errorMessage = await getReadableErrorMessage(
+          response,
+          "We couldn't submit the form. Please review the highlighted fields."
+        )
+        throw new Error(errorMessage)
       }
 
       const result = await response.json()
       toast.success("Form submitted successfully!")
+      setSubmissionError(null)
       
       if (onSuccess) {
         onSuccess(result)
@@ -201,7 +212,22 @@ export function SimpleMerchandisingForm({ onSuccess }: SimpleMerchandisingFormPr
       form.reset()
     } catch (error) {
       console.error('Submission error:', error)
-      toast.error("Failed to submit form")
+      const message =
+        error instanceof Error
+          ? error.message
+          : "We couldn't submit the form. Please review the highlighted fields."
+
+      const lowerMessage = message.toLowerCase()
+      if (lowerMessage.includes('employee')) {
+        form.setError('employee_name', { type: 'manual', message })
+      }
+
+      if (lowerMessage.includes('store')) {
+        form.setError('store_location', { type: 'manual', message })
+      }
+
+      setSubmissionError(message)
+      toast.error(message)
     } finally {
       setSubmitting(false)
     }
@@ -252,6 +278,11 @@ export function SimpleMerchandisingForm({ onSuccess }: SimpleMerchandisingFormPr
           </CardHeader>
           
           <CardContent className="p-6 space-y-6">
+            {submissionError && (
+              <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                {submissionError}
+              </div>
+            )}
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               
               {/* Basic Information */}
@@ -451,8 +482,12 @@ export function SimpleMerchandisingForm({ onSuccess }: SimpleMerchandisingFormPr
                   {...form.register("notes")}
                   placeholder="Any additional observations or comments..."
                   rows={4}
+                  maxLength={200}
                   className="resize-none"
                 />
+                <p className="text-xs text-gray-500 text-right">
+                  {notesValue.length}/200 characters
+                </p>
               </div>
 
               {/* Submit Button */}

@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import Image from "next/image";
+import { getReadableErrorMessage } from "@/lib/utils";
 
 // Form schema
 const storeAuditSchema = z.object({
@@ -45,7 +46,7 @@ const storeAuditSchema = z.object({
     .optional()
     .or(z.literal("")),
   out_of_stock: z.array(z.string()).default([]),
-  notes: z.string().optional(),
+  notes: z.string().max(200, "Notes must be 200 characters or fewer").optional(),
 });
 
 type StoreAuditFormData = z.infer<typeof storeAuditSchema>;
@@ -91,6 +92,7 @@ export function EnhancedMerchandisingForm({
   const [beforeImageUploading, setBeforeImageUploading] = useState(false);
   const [afterImageUploading, setAfterImageUploading] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
 
   const form = useForm<StoreAuditFormData>({
     resolver: zodResolver(storeAuditSchema),
@@ -104,6 +106,8 @@ export function EnhancedMerchandisingForm({
       notes: "",
     },
   });
+
+  const notesValue = form.watch("notes") || "";
 
   // Fetch employees and stores data
   useEffect(() => {
@@ -204,9 +208,11 @@ export function EnhancedMerchandisingForm({
 
   // Form submission
   const onSubmit = async (data: StoreAuditFormData) => {
-    try {
-      setSubmitting(true);
+    setSubmitting(true);
+    setSubmissionError(null);
+    form.clearErrors(["employee_name", "store_location"]);
 
+    try {
       const response = await fetch("/api/submissions", {
         method: "POST",
         headers: {
@@ -219,11 +225,16 @@ export function EnhancedMerchandisingForm({
       });
 
       if (!response.ok) {
-        throw new Error("Submission failed");
+        const errorMessage = await getReadableErrorMessage(
+          response,
+          "We couldn't submit the audit. Please review the highlighted fields."
+        );
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
       toast.success("Merchandising audit submitted successfully! 🎉");
+      setSubmissionError(null);
 
       if (onSuccess) {
         onSuccess(result);
@@ -233,7 +244,22 @@ export function EnhancedMerchandisingForm({
       form.reset();
     } catch (error) {
       console.error("Submission error:", error);
-      toast.error("Failed to submit audit 😔");
+      const message =
+        error instanceof Error
+          ? error.message
+          : "We couldn't submit the audit. Please review the highlighted fields.";
+
+      const lowerMessage = message.toLowerCase();
+      if (lowerMessage.includes("employee")) {
+        form.setError("employee_name", { type: "manual", message });
+      }
+
+      if (lowerMessage.includes("store")) {
+        form.setError("store_location", { type: "manual", message });
+      }
+
+      setSubmissionError(message);
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }
@@ -327,6 +353,11 @@ export function EnhancedMerchandisingForm({
           </CardHeader>
 
           <CardContent className="p-8">
+            {submissionError && (
+              <div className="mb-6 rounded-2xl border-2 border-red-200 bg-red-50/80 p-4 text-base text-red-700">
+                {submissionError}
+              </div>
+            )}
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
               {/* Step 1: Basic Info */}
               <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-2xl border-2 border-blue-100">
@@ -649,8 +680,12 @@ export function EnhancedMerchandisingForm({
                     {...form.register("notes")}
                     placeholder="Share any insights, challenges, or observations you made during your visit..."
                     rows={5}
+                    maxLength={200}
                     className="text-lg rounded-xl border-2 border-green-200 focus:border-green-400 focus:ring-green-300 resize-none"
                   />
+                  <p className="text-xs text-gray-500 text-right">
+                    {notesValue.length}/200 characters
+                  </p>
                   <p className="text-sm text-gray-500">
                     This helps us understand the full picture and improve future
                     visits ✨
