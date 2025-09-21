@@ -44,7 +44,7 @@ export default function SuccessPage() {
 
           <div className="text-center pt-2">
             <p className="text-xs text-gray-400 font-light">
-              Powered by Youvit
+              Created by hasbi@youvit.co.id
             </p>
           </div>
         </CardContent>
