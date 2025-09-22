@@ -31,7 +31,10 @@ const storeAuditSchema = z.object({
   before_image: z.string().optional(),
   after_image: z.string().optional(),
   out_of_stock: z.array(z.string()).optional().default([]),
-  notes: z.string().max(200, "Notes must be 200 characters or fewer").optional(),
+  notes: z
+    .string()
+    .max(200, "Notes must be 200 characters or fewer")
+    .optional(),
 });
 
 type StoreAuditFormData = z.infer<typeof storeAuditSchema>;
@@ -56,7 +59,18 @@ interface AppleStyleFormProps {
 }
 
 // Common out-of-stock items
-const OUT_OF_STOCK_ITEMS = ["PAM7", "PAA7", "PAS7", "PKM7", "PKO7", "PKA7"];
+const OUT_OF_STOCK_ITEMS = [
+  "Youvit Adult Multivitamin 7 Day",
+  "Youvit Adult Apple Cider 7 Day",
+  "Youvit Adult Ezzleep 7 Day",
+  "Youvit Kids Multivitamin 7 Day",
+  "Youvit Kids Multivitamin 30 Day",
+  "Youvit Kids Omega 7 Day",
+  "Youvit Kids Omega 30 Day",
+  "Youvit Kids Curcuma 7 Day",
+  "Youvit Female Beauti+ 7 Day",
+  "Youvit Female Collagen 7 Day",
+];
 
 export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -360,7 +374,7 @@ export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
                 {/* Out of Stock Section */}
                 <div className="space-y-4">
                   <Skeleton className="h-4 w-48" />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     {[...Array(6)].map((_, i) => (
                       <div key={i} className="flex items-center space-x-3">
                         <Skeleton className="h-4 w-4 rounded" />
@@ -752,7 +766,7 @@ export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
                   Out of Stock Items
                 </Label>
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     {OUT_OF_STOCK_ITEMS.map((item) => (
                       <div
                         key={item}

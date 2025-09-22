@@ -426,7 +426,7 @@ export function StoreAuditForm({ onSuccess }: StoreAuditFormProps) {
           {/* Out of Stock Items */}
           <div className="space-y-2">
             <Label>Out of Stock Items</Label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 border rounded-lg">
+            <div className="grid grid-cols-1 gap-3 p-4 border rounded-lg">
               {OUT_OF_STOCK_ITEMS.map((item) => (
                 <div key={item} className="flex items-center space-x-2">
                   <Checkbox

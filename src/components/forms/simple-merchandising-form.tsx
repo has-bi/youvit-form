@@ -454,7 +454,7 @@ export function SimpleMerchandisingForm({ onSuccess }: SimpleMerchandisingFormPr
               <div className="space-y-3">
                 <Label className="font-medium">Out of Stock Items</Label>
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3">
                     {OUT_OF_STOCK_ITEMS.map((item) => (
                       <div key={item} className="flex items-center space-x-2">
                         <Checkbox

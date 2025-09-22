@@ -631,7 +631,7 @@ export function EnhancedMerchandisingForm({
                   <Label className="text-lg font-semibold text-gray-700 mb-4 block">
                     Which products are out of stock? (Check all that apply)
                   </Label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4">
                     {OUT_OF_STOCK_ITEMS.map((item) => (
                       <div
                         key={item}
