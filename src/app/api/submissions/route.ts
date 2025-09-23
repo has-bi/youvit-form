@@ -137,11 +137,12 @@ async function addToGoogleSheets(submissionData: any, formTitle: string) {
       submissionData.store_location || '',         // D: Store Location
       getFileUrl(submissionData.before_image),     // E: Before Image URL
       getFileUrl(submissionData.after_image),      // F: After Image URL
-      Array.isArray(submissionData.out_of_stock)   // G: Out of Stock Items
+      submissionData.visibility || '',             // G: Visibility
+      Array.isArray(submissionData.out_of_stock)   // H: Out of Stock Items
         ? submissionData.out_of_stock.join(', ') 
         : (submissionData.out_of_stock || ''),
-      submissionData.notes || '',                  // H: Notes
-      formTitle                                    // I: Form Title
+      submissionData.notes || '',                  // I: Notes
+      formTitle                                    // J: Form Title
     ]
 
     // Try to append to "Submissions" sheet directly
@@ -152,7 +153,7 @@ async function addToGoogleSheets(submissionData: any, formTitle: string) {
       // Try to append directly - this is much faster
       result = await sheets.spreadsheets.values.append({
         spreadsheetId,
-        range: `${sheetName}!A:I`,
+        range: `${sheetName}!A:J`,
         valueInputOption: 'RAW',
         insertDataOption: 'INSERT_ROWS',
         requestBody: {
@@ -186,6 +187,7 @@ async function addToGoogleSheets(submissionData: any, formTitle: string) {
           'Store Location',
           'Before Image',
           'After Image', 
+          'Visibility',
           'Out of Stock Items',
           'Notes',
           'Form Title'
@@ -197,11 +199,11 @@ async function addToGoogleSheets(submissionData: any, formTitle: string) {
             valueInputOption: 'RAW',
             data: [
               {
-                range: `${sheetName}!A1:I1`,
+                range: `${sheetName}!A1:J1`,
                 values: [headerRow]
               },
               {
-                range: `${sheetName}!A2:I2`,
+                range: `${sheetName}!A2:J2`,
                 values: [rowData]
               }
             ]
@@ -213,7 +215,7 @@ async function addToGoogleSheets(submissionData: any, formTitle: string) {
     }
 
     console.log('✅ Successfully added to Google Sheets')
-    return result.data.updatedRange || `${sheetName}!A:I`
+    return result.data.updatedRange || `${sheetName}!A:J`
 
   } catch (error) {
     console.error('❌ Error adding to Google Sheets:', error)

@@ -28,6 +28,7 @@ const storeAuditSchema = z.object({
   audit_date: z.string().min(1, "Date is required"),
   employee_name: z.string().min(1, "Employee name is required"),
   store_location: z.string().min(1, "Store location is required"),
+  visibility: z.string().min(1, "Visibility selection is required"),
   before_image: z.string().optional(),
   after_image: z.string().optional(),
   out_of_stock: z.array(z.string()).optional().default([]),
@@ -72,6 +73,17 @@ const OUT_OF_STOCK_ITEMS = [
   "Youvit Female Collagen 7 Day",
 ];
 
+const VISIBILITY_OPTIONS = [
+  "COC Acrylic Adults (MAP Sport)",
+  "COC Acrylic Kids (MAP Kids)",
+  "Display homeshelf (MAP Kids)",
+  "Standee Kids (Kimia Farma)",
+  "Carton tray kids (Kimia Farma)",
+  "Display homeshelf (Kimia Farma)",
+  "Display COC (Kimia Farma)",
+  "Carton tray kids (Raja Susu)",
+];
+
 export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
@@ -94,6 +106,7 @@ export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
       audit_date: new Date().toISOString().split("T")[0],
       employee_name: "",
       store_location: "",
+      visibility: "",
       before_image: "",
       after_image: "",
       out_of_stock: [],
@@ -612,6 +625,45 @@ export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
                   {form.formState.errors.store_location && (
                     <p className="text-red-600 text-sm">
                       {form.formState.errors.store_location.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <Label
+                    htmlFor="visibility"
+                    className="text-sm font-medium text-gray-700"
+                  >
+                    Visibility
+                  </Label>
+                  <Controller
+                    name="visibility"
+                    control={form.control}
+                    render={({ field }) => (
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <SelectTrigger className="h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg bg-white">
+                          <SelectValue placeholder="Select visibility" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white border border-gray-200 shadow-lg">
+                          {VISIBILITY_OPTIONS.map((option) => (
+                            <SelectItem
+                              key={option}
+                              value={option}
+                              className="text-gray-700 focus:bg-blue-50 focus:text-blue-600"
+                            >
+                              {option}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {form.formState.errors.visibility && (
+                    <p className="text-red-600 text-sm">
+                      {form.formState.errors.visibility.message}
                     </p>
                   )}
                 </div>
