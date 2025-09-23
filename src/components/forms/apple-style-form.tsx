@@ -76,12 +76,12 @@ const OUT_OF_STOCK_ITEMS = [
 const VISIBILITY_OPTIONS = [
   "COC Acrylic Adults (MAP Sport)",
   "COC Acrylic Kids (MAP Kids)",
-  "Display homeshelf (MAP Kids)",
+  "Homeshelf Display (MAP Kids)",
   "Standee Kids (Kimia Farma)",
-  "Carton tray kids (Kimia Farma)",
-  "Display homeshelf (Kimia Farma)",
+  "Carton Tray Kids (Kimia Farma)",
+  "Homeshelf Display (Kimia Farma)",
   "Display COC (Kimia Farma)",
-  "Carton tray kids (Raja Susu)",
+  "Carton Tray Kids (Raja Susu)",
 ];
 
 export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
