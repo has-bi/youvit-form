@@ -82,6 +82,7 @@ const VISIBILITY_OPTIONS = [
   "Homeshelf Display (Kimia Farma)",
   "Display COC (Kimia Farma)",
   "Carton Tray Kids (Raja Susu)",
+  "Stackrack (Kimia Farma)",
 ];
 
 export function AppleStyleForm({ onSuccess }: AppleStyleFormProps) {
